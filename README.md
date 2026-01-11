@@ -192,18 +192,25 @@ Show it in frontend -> proves Web3 event handling.
 
 Hardhat with node
 
-```javascript
+```bash
 npx hardhat node
 ```
 
 Deploy on localhost network
 
-```javascript
+```bash
 npx hardhat run scripts/deploy.ts --network localhost
 ```
 
 Run this command from project root:
 
-```javascript
+```bash
 DEBUG=* npm --prefix ./frontend run dev
+```
+
+Or use starter script commands:
+
+```bash
+chmod +x ./start.sh
+./start.sh
 ```
