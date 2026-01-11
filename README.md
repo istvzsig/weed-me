@@ -187,3 +187,11 @@ event Harvested(address player, uint tokenId, uint reward);
 ```
 
 Show it in frontend -> proves Web3 event handling.
+
+### Frontend Start ( Local Dev )
+
+Run this command from project root:
+
+```javascript
+DEBUG=* npm --prefix ./frontend run dev
+```
