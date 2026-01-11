@@ -190,6 +190,18 @@ Show it in frontend -> proves Web3 event handling.
 
 ### Frontend Start ( Local Dev )
 
+Hardhat with node
+
+```javascript
+npx hardhat node
+```
+
+Deploy on localhost network
+
+```javascript
+npx hardhat run scripts/deploy.ts --network localhost
+```
+
 Run this command from project root:
 
 ```javascript
