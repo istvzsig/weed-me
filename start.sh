@@ -1,3 +1,5 @@
+#!/bin/bash
+
 PROJECT_DIR=$(pwd)
 
 function run_command() {
