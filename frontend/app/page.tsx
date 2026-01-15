@@ -1,149 +1,233 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ethers } from "ethers";
+import Web3 from "web3";
+import type { Contract } from "web3-eth-contract";
 
 import FarmGameABI from "../abi/FarmGame.sol/FarmGame.json";
 import WeedTokenABI from "../abi/WeedToken.sol/WeedToken.json";
 import PlantNFTABI from "../abi/PlantNFT.sol/PlantNFT.json";
 
-const FARM_GAME_ADDRESS = "PASTE_FARMGAME_ADDRESS_HERE";
-const WEED_TOKEN_ADDRESS = "PASTE_WEEDTOKEN_ADDRESS_HERE";
-const PLANT_NFT_ADDRESS = "PASTE_PLANTNFT_ADDRESS_HERE";
+const WEED_TOKEN_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const PLANT_NFT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const FARM_GAME_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+
+/* ----------------------
+   Logger helper
+---------------------- */
+function log(scope: string, message: string, data?: any) {
+  console.log(
+    `%c[${scope}]`,
+    "color:#22c55e;font-weight:bold",
+    message,
+    data ?? ""
+  );
+}
 
 export default function Home() {
+  const [web3, setWeb3] = useState<Web3 | null>(null);
   const [account, setAccount] = useState<string | null>(null);
-  const [farm, setFarm] = useState<ethers.Contract | null>(null);
+  const [farm, setFarm] = useState<Contract | null>(null);
+  const [loading, setLoading] = useState(false);
   const [plants, setPlants] = useState<number[]>([]);
-  const [weedBalance, setWeedBalance] = useState("0");
-  const [ready, setReady] = useState<{ [id: number]: boolean }>({});
+  const [weedBalance, setWeedBalance] = useState<string>("0");
+  const [ready, setReady] = useState<Record<number, boolean>>({});
 
-  // ----------------------
-  // Connect Wallet
-  // ----------------------
+  /* ----------------------
+     Init Web3
+  ---------------------- */
+  useEffect(() => {
+    if ((window as any).ethereum) {
+      log("WEB3", "Initializing Web3 provider");
+      const web3Instance = new Web3((window as any).ethereum);
+      setWeb3(web3Instance);
+    } else {
+      log("WEB3", "No wallet detected");
+      alert("Please install MetaMask");
+    }
+  }, []);
+
+  /* ----------------------
+     Connect Wallet
+  ---------------------- */
   async function connectWallet() {
-    if (!window.ethereum) return alert("Install MetaMask");
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const accounts = await provider.send("eth_requestAccounts", []);
-    setAccount(accounts[0]);
+    if (!web3) return;
 
-    const signer = await provider.getSigner();
-    const farmContract = new ethers.Contract(
-      FARM_GAME_ADDRESS,
-      FarmGameABI.abi,
-      signer
+    log("WALLET", "Requesting accounts");
+    const accounts = await web3.eth.requestAccounts();
+
+    if (!accounts.length) {
+      log("WALLET", "No accounts returned");
+      return;
+    }
+
+    const acc = accounts[0];
+    setAccount(acc);
+    log("WALLET", "Connected", acc);
+
+    const farmContract = new web3.eth.Contract(
+      FarmGameABI.abi as any,
+      FARM_GAME_ADDRESS
     );
     setFarm(farmContract);
+    log("CONTRACT", "FarmGame loaded", FARM_GAME_ADDRESS);
+
+    await loadBalance(acc);
+    await loadPlants(farmContract, acc);
   }
 
-  // ----------------------
-  // Load WEED Balance
-  // ----------------------
-  async function loadBalance() {
-    if (!account) return;
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
-    const weed = new ethers.Contract(
-      WEED_TOKEN_ADDRESS,
-      WeedTokenABI.abi,
-      signer
+  /* ----------------------
+     Load Balance
+  ---------------------- */
+  async function loadBalance(acc: string) {
+    if (!web3) return;
+
+    log("BALANCE", "Fetching WEED balance", acc);
+
+    const weed = new web3.eth.Contract(
+      WeedTokenABI.abi as any,
+      WEED_TOKEN_ADDRESS
     );
 
-    try {
-      const address = await signer.getAddress();
-      const balance = await weed.balanceOf(address);
-      setWeedBalance(ethers.formatEther(balance));
-    } catch (err) {
-      console.error("Error reading WEED balance:", err);
-      setWeedBalance("0");
-    }
+    const balance = await weed.methods.balanceOf(acc).call();
+    setWeedBalance(balance);
+
+    log("BALANCE", "WEED balance loaded", {
+      raw: balance,
+      formatted: web3.utils.fromWei(balance, "ether"),
+    });
   }
 
-  // ----------------------
-  // Load Owned Plants
-  // ----------------------
-  async function loadPlants() {
-    if (!account || !farm) return;
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
-    const nft = new ethers.Contract(PLANT_NFT_ADDRESS, PlantNFTABI.abi, signer);
+  /* ----------------------
+     Load Plants
+  ---------------------- */
+  async function loadPlants(farmContract: Contract, acc: string) {
+    if (!web3) return;
 
-    const address = await signer.getAddress();
-    const balance = Number(await nft.balanceOf(address));
+    log("PLANTS", "Loading plants for", acc);
+
+    const nft = new web3.eth.Contract(
+      PlantNFTABI.abi as any,
+      PLANT_NFT_ADDRESS
+    );
+
+    const balance = Number(await nft.methods.balanceOf(acc).call());
+    log("PLANTS", "NFT balance", balance);
+
     const owned: number[] = [];
-
     for (let i = 0; i < balance; i++) {
-      const tokenId = await nft.tokenOfOwnerByIndex(address, i);
+      const tokenId = await nft.methods
+        .tokenOfOwnerByIndex(acc, i)
+        .call();
       owned.push(Number(tokenId));
     }
 
     setPlants(owned);
+    log("PLANTS", "Owned token IDs", owned);
 
-    const status: { [id: number]: boolean } = {};
+    const status: Record<number, boolean> = {};
     for (const id of owned) {
-      status[id] = await farm.isReadyToHarvest(id);
+      status[id] = await farmContract.methods
+        .isReadyToHarvest(id)
+        .call();
+      log("PLANTS", `Plant #${id} ready`, status[id]);
     }
+
     setReady(status);
   }
 
-  // ----------------------
-  // Plant
-  // ----------------------
+  /* ----------------------
+     Plant
+  ---------------------- */
   async function plant(type: number) {
-    if (!farm) return;
-    const tx = await farm.plant(type);
-    await tx.wait();
-    await loadPlants();
-    await loadBalance();
+    if (!farm || !account) return;
+
+    setLoading(true);
+    log("TX", "Planting seed", { type });
+
+    try {
+      const receipt = await farm.methods
+        .plant(type)
+        .send({ from: account });
+
+      log("TX", "Plant success", receipt.transactionHash);
+
+      await loadPlants(farm, account);
+      await loadBalance(account);
+    } catch (err) {
+      log("ERROR", "Plant failed", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // ----------------------
-  // Harvest
-  // ----------------------
+  /* ----------------------
+     Harvest
+  ---------------------- */
   async function harvest(id: number) {
-    if (!farm) return;
-    const tx = await farm.harvest(id);
-    await tx.wait();
-    await loadPlants();
-    await loadBalance();
+    if (!farm || !account) return;
+
+    setLoading(true);
+    log("TX", "Harvesting plant", id);
+
+    try {
+      const receipt = await farm.methods
+        .harvest(id)
+        .send({ from: account });
+
+      log("TX", "Harvest success", receipt.transactionHash);
+
+      await loadPlants(farm, account);
+      await loadBalance(account);
+    } catch (err) {
+      log("ERROR", "Harvest failed", err);
+      alert("Harvest failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // Reload data whenever account or farm changes
-  useEffect(() => {
-    if (!account || !farm) return;
-    (async () => {
-      // await loadPlants();
-      // await loadBalance();
-    })();
-  }, [account, farm]);
-
-  // ----------------------
-  // Render UI
-  // ----------------------
   return (
     <main style={{ padding: 40 }}>
       <h1>🌱 Weed Farm</h1>
+
+      {loading && <p>Loading...</p>}
 
       {!account ? (
         <button onClick={connectWallet}>Connect Wallet</button>
       ) : (
         <>
-          <p>Connected: {account}</p>
-          <p>WEED Balance: {weedBalance}</p>
+          <p>Account: {formatAccount(account)}</p>
+          <p>
+            WEED Balance:{" "}
+            {web3 ? web3.utils.fromWei(weedBalance, "ether") : "0"}
+          </p>
 
           <h2>🌱 Plant Seeds</h2>
-          <button onClick={() => plant(0)}>Plant OG Kush</button>
-          <button onClick={() => plant(1)}>Plant Blue Dream</button>
+          <button
+            disabled={weedBalance === "0"}
+            onClick={() => plant(0)}
+          >
+            Plant OG Kush
+          </button>
+          <button
+            disabled={weedBalance === "0"}
+            onClick={() => plant(1)}
+          >
+            Plant Blue Dream
+          </button>
 
           <h2>Your Plants</h2>
           {plants.length === 0 && <p>No plants yet</p>}
+
           {plants.map((id) => (
             <div key={id} style={{ margin: "10px 0" }}>
-              <span>
-                Plant #{id} — {ready[id] ? "✅ Ready" : "⏳ Growing"}
-              </span>
+              Plant #{id} — {ready[id] ? "✅ Ready" : "⏳ Growing"}
               {ready[id] && (
-                <button style={{ marginLeft: 10 }} onClick={() => harvest(id)}>
+                <button
+                  style={{ marginLeft: 10 }}
+                  onClick={() => harvest(id)}
+                >
                   Harvest
                 </button>
               )}
@@ -153,4 +237,8 @@ export default function Home() {
       )}
     </main>
   );
+}
+
+function formatAccount(addr: string) {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
