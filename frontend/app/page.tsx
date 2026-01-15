@@ -8,21 +8,9 @@ import FarmGameABI from "../abi/FarmGame.sol/FarmGame.json";
 import WeedTokenABI from "../abi/WeedToken.sol/WeedToken.json";
 import PlantNFTABI from "../abi/PlantNFT.sol/PlantNFT.json";
 
-const WEED_TOKEN_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-const PLANT_NFT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
-const FARM_GAME_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
-
-/* ----------------------
-   Logger helper
----------------------- */
-function log(scope: string, message: string, data?: any) {
-  console.log(
-    `%c[${scope}]`,
-    "color:#22c55e;font-weight:bold",
-    message,
-    data ?? ""
-  );
-}
+const WEED_TOKEN_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
+const PLANT_NFT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+const FARM_GAME_ADDRESS = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707";
 
 export default function Home() {
   const [web3, setWeb3] = useState<Web3 | null>(null);
@@ -116,9 +104,7 @@ export default function Home() {
 
     const owned: number[] = [];
     for (let i = 0; i < balance; i++) {
-      const tokenId = await nft.methods
-        .tokenOfOwnerByIndex(acc, i)
-        .call();
+      const tokenId = await nft.methods.tokenOfOwnerByIndex(acc, i).call();
       owned.push(Number(tokenId));
     }
 
@@ -127,9 +113,7 @@ export default function Home() {
 
     const status: Record<number, boolean> = {};
     for (const id of owned) {
-      status[id] = await farmContract.methods
-        .isReadyToHarvest(id)
-        .call();
+      status[id] = await farmContract.methods.isReadyToHarvest(id).call();
       log("PLANTS", `Plant #${id} ready`, status[id]);
     }
 
@@ -146,9 +130,7 @@ export default function Home() {
     log("TX", "Planting seed", { type });
 
     try {
-      const receipt = await farm.methods
-        .plant(type)
-        .send({ from: account });
+      const receipt = await farm.methods.plant(type).send({ from: account });
 
       log("TX", "Plant success", receipt.transactionHash);
 
@@ -171,9 +153,7 @@ export default function Home() {
     log("TX", "Harvesting plant", id);
 
     try {
-      const receipt = await farm.methods
-        .harvest(id)
-        .send({ from: account });
+      const receipt = await farm.methods.harvest(id).send({ from: account });
 
       log("TX", "Harvest success", receipt.transactionHash);
 
@@ -204,16 +184,10 @@ export default function Home() {
           </p>
 
           <h2>🌱 Plant Seeds</h2>
-          <button
-            disabled={weedBalance === "0"}
-            onClick={() => plant(0)}
-          >
+          <button disabled={weedBalance === "0"} onClick={() => plant(0)}>
             Plant OG Kush
           </button>
-          <button
-            disabled={weedBalance === "0"}
-            onClick={() => plant(1)}
-          >
+          <button disabled={weedBalance === "0"} onClick={() => plant(1)}>
             Plant Blue Dream
           </button>
 
@@ -224,10 +198,7 @@ export default function Home() {
             <div key={id} style={{ margin: "10px 0" }}>
               Plant #{id} — {ready[id] ? "✅ Ready" : "⏳ Growing"}
               {ready[id] && (
-                <button
-                  style={{ marginLeft: 10 }}
-                  onClick={() => harvest(id)}
-                >
+                <button style={{ marginLeft: 10 }} onClick={() => harvest(id)}>
                   Harvest
                 </button>
               )}
@@ -241,4 +212,13 @@ export default function Home() {
 
 function formatAccount(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+function log(scope: string, message: string, data?: any) {
+  console.log(
+    `%c[${scope}]`,
+    "color:#22c55e;font-weight:bold",
+    message,
+    data ?? ""
+  );
 }
