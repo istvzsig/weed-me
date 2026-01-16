@@ -61,6 +61,10 @@ contract FarmGame {
         emit Harvested(msg.sender, tokenId, reward);
     }
 
+    function buyWeed() external {
+        weedToken.mint(msg.sender, 100 ether);
+    }
+
     // -----------------------------
     // View Helpers
     // -----------------------------
