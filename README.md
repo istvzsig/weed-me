@@ -214,3 +214,45 @@ Or use starter script commands:
 chmod +x ./start.sh
 ./start.sh
 ```
+
+## Starter scripts
+
+```bash
+  chmod +x ./hardhat_deploy.sh
+  ./hardhat_compile.sh
+```
+
+Script to manage the build process for smart contracts in a project:
+
+1. Sets up directories for artifacts and cache based on the current project directory.
+2. Deletes any existing artifacts and cache directories to ensure a fresh build environment.
+3. Compiles the smart contracts using Hardhat.
+4. Copies the generated ABI (Application Binary Interface) files to the frontend directory for integration.
+
+Dependencies:
+This script requires 'npx' and 'hardhat' to be installed and available in the PATH.
+
+Exit Codes:
+0 - Success
+1 - Compilation failure or ABI copy failure
+
+```bash
+  chmod +x ./hardhat_deploy.sh
+  ./hardhat_deploy.sh
+```
+
+Script to deploy smart contracts to a local Hardhat network:
+
+1. Sets project paths and ensures local environment configuration with a .env file.
+2. Cleans up existing Hardhat artifacts and cache directories.
+3. Deploys smart contracts to the localhost using Hardhat.
+4. Captures the output of the deployment, extracting contract addresses for WeedToken,
+   PlantNFT, and FarmGame.
+5. Updates the .env file to store the new contract addresses, ensuring old addresses are removed.
+
+Dependencies:
+Ensure 'npx' and 'hardhat' are installed and accessible from the command line.
+
+Exit Codes:
+0 - Success
+1 - Extraction failure of contract addresses
