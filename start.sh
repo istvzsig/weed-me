@@ -1,60 +1,87 @@
 #!/bin/bash
+set -e
 
-# DEBUGGER={1$}
+# Set the project directory
 PROJECT_DIR=$(pwd)
-LOG_FILE="logs.txt"
+SCRIPTS_DIR="$PROJECT_DIR/scripts"
+mkdir -p "$PROJECT_DIR/logs"
 
-# Clear the log file at the start
-echo "" > "$LOG_FILE"
-
-function delete_artifacts_and_cache() {
-    echo "[CONTRACT] Deleting artifacts and cache..."
-    rm -rf "$PROJECT_DIR/artifacts" "$PROJECT_DIR/cache"
+# Helper to create timestamped log file
+function create_log_file() {
+    local prefix=$1
+    echo "$PROJECT_DIR/logs/${prefix}_$(date +'%Y%m%d_%H%M%S').log"
 }
 
-function hardhat_start() {
-    echo "[CONTRACT] Starting Hardhat node..."
-    DEBUG=* npx --prefix "$PROJECT_DIR" hardhat node >> "$LOG_FILE" 2>&1 &
-    HHH_PID=$!  # Store the PID of the Hardhat node
-    sleep 5  # Initial delay to allow some startup time
+# =========================
+# HARDHAT NODE
+# =========================
+function hardhat_run_node() {
+    if lsof -i:8545 -t >/dev/null 2>&1; then
+        echo "[CONTRACT] Hardhat node already running on port 8545, skipping start."
+    else
+        local log_file
+        log_file=$(create_log_file "hardhat_node")
+        echo "[CONTRACT] Starting Hardhat node... Logs -> $log_file"
+        DEBUG=* npx --prefix "$PROJECT_DIR" hardhat node 2>&1 | tee "$log_file" &
+        HHH_PID=$!
+        echo "[CONTRACT] Hardhat node started with PID $HHH_PID"
+    fi
 }
 
-function hardhat_compiled_check() {
-    echo "[CONTRACT] Checking if Hardhat node is running..."
-    for i in {1..10}; do
-        if nc -z localhost 8545; then
-            echo "[CONTRACT] Hardhat node is running!"
-            return 0
-        fi
-        echo "[CONTRACT] Waiting for Hardhat node to start..."
-        sleep 1
-    done
-    echo "[ERROR] Hardhat node did not start in time."
-    kill -9 $HHH_PID  # Kill Hardhat node if it fails to start
-    exit 1
-}
-
+# =========================
+# HARDHAT COMPILE
+# =========================
 function hardhat_compile() {
-    echo "[CONTRACT] Compiling Hardhat project..."
-    DEBUG=* npx --prefix "$PROJECT_DIR" hardhat compile >> "$LOG_FILE" 2>&1
+    local log_file
+    log_file=$(create_log_file "hardhat_compile")
+    echo "[CONTRACT] Compiling smart contracts... Logs -> $log_file"
+    bash "$SCRIPTS_DIR/hardhat_compile.sh" 2>&1 | tee "$log_file"
 }
 
-function hardhat_deploy_localhost() {
-    echo "[CONTRACT] Deploying to localhost..."
-    DEBUG=* npx --prefix "$PROJECT_DIR" hardhat run scripts/deploy.ts --network localhost >> "$LOG_FILE" 2>&1
+# =========================
+# HARDHAT DEPLOY
+# =========================
+function hardhat_deploy() {
+    local log_file
+    log_file=$(create_log_file "hardhat_deploy")
+    echo "[CONTRACT] Deploying smart contracts... Logs -> $log_file"
+    bash "$SCRIPTS_DIR/hardhat_deploy.sh" 2>&1 | tee "$log_file"
 }
 
-function start_frontend() {
-    echo "[FRONTEND] Starting frontend..."
-    (cd "$PROJECT_DIR/frontend" && npm run dev)  # Run in the foreground to see output
+# =========================
+# FRONTEND
+# =========================
+function run_frontend() {
+    local dir="$PROJECT_DIR/frontend"
+    local log_file
+    log_file=$(create_log_file "frontend")
+    echo "[FRONTEND] Starting frontend... Logs -> $log_file"
+    
+    # Kill existing frontend if running
+    local pid
+    pid=$(lsof -i:3000 -t || true)
+    if [[ -n "$pid" ]]; then
+        echo "[FRONTEND] Frontend already running (PID: $pid), killing..."
+        kill -9 "$pid"
+    fi
+
+    # Start frontend script
+    bash "$SCRIPTS_DIR/run_frontend.sh" "$dir"
+    FRONTEND_PID=$!
+    echo "[FRONTEND] Frontend started with PID $FRONTEND_PID"
 }
 
+# =========================
+# MENU
+# =========================
 function show_menu() {
+    echo "========================================"
     echo "Main Menu:"
-    echo "1) Redeploy"
-    echo "2) Start Frontend"
-    echo "3) Start Hardhat Node"
-    echo "4) Full Development Setup"
+    echo "========================================"
+    echo "1) Hardhat compile"
+    echo "2) Hardhat deploy"
+    echo "3) Start / Restart frontend"
+    echo "4) Run full automation setup"
     echo "5) Exit"
 }
 
@@ -64,36 +91,28 @@ while true; do
 
     case $choice in
         1)
-            delete_artifacts_and_cache
-            hardhat_start
-            hardhat_compiled_check
+            hardhat_run_node
             hardhat_compile
-            hardhat_deploy_localhost
             ;;
         2)
-            start_frontend
+            hardhat_run_node
+            hardhat_deploy
             ;;
         3)
-            hardhat_start
+            run_frontend
             ;;
         4)
-            echo "[CONTRACT] Running Full Development Setup..."
-            delete_artifacts_and_cache
-            hardhat_start
-            hardhat_compiled_check
+            hardhat_run_node
             hardhat_compile
-            hardhat_deploy_localhost
-            start_frontend  # Starts the frontend in the foreground
+            hardhat_deploy
+            run_frontend
             ;;
         5)
-            echo "[INFO] Exiting..."
-            break
+            echo "Exiting..."
+            exit 0
             ;;
         *)
             echo "[ERROR] Invalid option, please try again."
             ;;
     esac
-
-    # Optionally, tail the log file here if needed
-    tail -f "$LOG_FILE"
 done
