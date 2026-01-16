@@ -17,15 +17,8 @@ async function main() {
     WeedTokenJson.bytecode,
     signer
   );
-  const options = {
-    gasLimit: 5000000, // Customize this according to your contract's complexity
-    gasPrice: ethers.parseUnits("20", "gwei"), // Adjust based on current network conditions
-  };
 
-  const weedToken = await WeedTokenFactory.deploy(
-    await signer.getAddress(),
-    options
-  );
+  const weedToken = await WeedTokenFactory.deploy(await signer.getAddress());
 
   await weedToken.waitForDeployment();
   console.log("WeedToken deployed at:", weedToken.target);
@@ -52,6 +45,9 @@ async function main() {
   );
   await farmGame.waitForDeployment();
   console.log("FarmGame deployed at:", farmGame.target);
+
+  await weedToken.transferOwnership(farmGame.target);
+  console.log("WeedToken ownership transferred to FarmGame");
 }
 
 main().catch((err) => {
