@@ -38,15 +38,5 @@ else
     exit 1
 fi
 
-# Copy ABI files
-log "Copying ABI files to frontend directory..."
-mkdir -p "$PROJECT_DIR/frontend/abi"
-if cp -r "$ARTIFACTS_DIR/contracts/"* "$PROJECT_DIR/frontend/abi/" 2>&1 | tee -a "$LOG_FILE"; then
-    log "ABI files copied successfully."
-else
-    log "Error: Failed to copy ABI files."
-    exit 1
-fi
-
 log "Compilation script finished. Log saved at $LOG_FILE"
 exit 0
