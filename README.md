@@ -1,258 +1,121 @@
-# Weed Me - web3 game demo
+# 🌱 Weed Farm NFT Game
 
-- A playable farming loop (plant → grow → harvest)
-- On-chain assets (NFT plants + ERC20 token)
-- Wallet connection
-- Play-to-Earn logic (harvest → token reward)
-- Clean, readable code & repo structure
+Weed Farm is a blockchain-based NFT farming game where players plant seeds, grow them into NFT plants, and earn in-game currency (WEED) as rewards. The game is designed for fun, experimentation, and testing economic models locally or on testnets.
 
-## Final MVP Scope
+---
 
-### What you WILL build
+## Table of Contents
 
-- Single-player farm
-- 2 plant types
-- Time-based growth
-- ERC20 reward token
-- ERC721 plants
-- Minimal UI
-- Local + testnet deploy
+- [Game Concept](#game-concept)
+- [Core Gameplay Loop](#core-gameplay-loop)
+- [In-Game Economy](#in-game-economy)
+- [Business Model](#business-model)
+- [Developer Setup](#developer-setup)
+- [Future Enhancements](#future-enhancements)
 
-### What you will NOT build
+---
 
-- Marketplace
-- Cooperatives
-- Events
-- Animations
-- Real money trading
+## Game Concept
 
-## Tech Stack (Fast & Hire-Friendly)
+Players grow NFT plants in a digital farm using the in-game currency WEED. Each plant is represented as an NFT, which can be harvested for rewards and potentially traded. The game uses a simple play-to-earn loop to keep players engaged and allows experimentation with tokenomics and NFT mechanics.
 
-### Frontend
+---
 
-- Next.js
-- ethers.js
-- Tailwind (optional)
-- Wallet: MetaMask
+## Core Gameplay Loop
 
-### Smart Contracts
+1. **Connect Wallet**: Players connect their Ethereum wallet (e.g., MetaMask).
+2. **Acquire WEED**: Players start with free WEED tokens (faucet) or purchase with ETH (optional for monetization).
+3. **Plant Seeds**: Spend WEED to mint NFT plants. Players can choose different seed types with varying growth times and rewards.
+4. **Grow**: Plants take some time to mature. Short grow times are ideal for testing, longer grow times for mainnet gameplay.
+5. **Harvest**: Once matured, plants can be harvested to earn more WEED tokens.
+6. **Repeat / Trade**: Players can reinvest their WEED into more seeds or trade NFT plants on a marketplace (optional).
 
-- Solidity
-- Hardhat
-- Contracts:
-  - FarmGame.sol
-  - WeedToken.sol (ERC20)
-  - PlantNFT.sol (ERC721)
+---
 
-### Network
+## In-Game Economy
 
-Polygon Mumbai or Base Sepolia
+- **WEED Tokens (ERC20)**:
 
-## Core Game Design (Minimal but Legit)
+  - Currency used for planting seeds and earning rewards.
+  - Can be earned from harvesting plants.
+  - Optionally purchased with ETH for premium gameplay.
 
-### Plant Types (hardcoded)
+- **NFT Plants (ERC721)**:
 
-```javascript
-PlantType {
-  id: 0 | 1
-  name: "OG Kush" | "Blue Dream"
-  growTime: 5 min | 10 min
-  reward: 10 | 25 WEED
-}
+  - Represent individual plants grown by the player.
+  - Different types of seeds yield different rewards.
+  - Can be traded or collected for achievements.
+
+- **Balance and Rewards**:
+  - Players earn WEED proportional to the type and number of plants harvested.
+  - Optional rare plants or seasonal seeds increase rewards.
+
+---
+
+## Business Model
+
+1. **Play-to-Earn (P2E)**: Players earn tokens by actively playing the game.
+2. **Free-to-Play (F2P)**: New players start with a WEED faucet to encourage experimentation without spending money.
+3. **Optional Premium Purchases**: Players can buy WEED with ETH to speed up growth or acquire rare seeds.
+4. **NFT Marketplace**: Players can trade plants, seeds, or harvested NFTs. The platform can take a small transaction fee for monetization.
+5. **Economy Controls**:
+   - Rare seeds or plants act as scarcity mechanics.
+   - Token sinks (e.g., burning WEED to mint rare NFTs) prevent inflation.
+   - Seasonal or limited edition plants create engagement and hype.
+
+This model balances **player engagement, rewards, and potential revenue streams** while keeping the game accessible for testing and development.
+
+---
+
+## Developer Setup
+
+1. **Start Hardhat Node**: Local blockchain with pre-funded test accounts.
+   ```bash
+   npx hardhat node
+   ```
+
+````
+
+2. **Deploy Contracts**: Deploy WeedToken, PlantNFT, and FarmGame contracts. Transfer ownership to FarmGame for full gameplay.
+
+3. **Configure Frontend**: Set contract addresses in `.env` for React frontend.
+
+4. **Play the Game Locally**:
+
+   - Connect wallet via MetaMask.
+   - Acquire WEED tokens (faucet).
+   - Plant seeds, wait for growth, and harvest rewards.
+   - Repeat and test economy dynamics.
+
+---
+
+## Future Enhancements
+
+- Rare/seasonal plant types with higher rewards.
+- Plant breeding mechanics for NFT upgrades.
+- Real ETH or stablecoin purchases of WEED for monetization.
+- Marketplace integration for trading NFTs and harvested tokens.
+- Analytics for balancing rewards and growth times.
+
+---
+
+## Notes
+
+- Designed for **local development and testnet experimentation**.
+- Hardhat test accounts come pre-funded with 1000 ETH to simplify testing.
+- Grow times are short (minutes) for development but can be adjusted for production.
+
+---
+
+🌱 Enjoy growing your NFT farm and experimenting with play-to-earn mechanics!
+
 ```
 
-### Gameplay Loop (1 Smart Contract)
+---
 
-**1. Plant Seed**
+This version focuses entirely on **gameplay flow, economy, and monetization strategy**, while giving developers a **simple local dev setup**.
 
-```sol
-function plant(uint8 plantType) external;
+If you want, I can also create a **diagram/visual map of the game economy** (NFTs, WEED token flow, rewards, and optional ETH purchases) to make it easier for devs to follow.
+
+Do you want me to do that next?
 ```
-
-- Mints an NFT
-- Stores:
-  - owner
-  - plantedAt
-  - plantType
-  - harvested = false
-
-**2. Grow (Passive)**
-
-- No action
-- Growth = block.timestamp - plantedAt
-
-**3. Harvest**
-
-```sol
-function harvest(uint256 tokenId) external;
-```
-
-Requirements:
-
-- Caller owns NFT
-- now >= plantedAt + growTime
-- Not harvested yet
-
-Result:
-
-- Mint WEED tokens
-- Mark NFT as harvested
-
-### Tokenomics (Simple & Defensible)
-
-**WeedToken (ERC20)**
-
-- Minted **only on harvest**
-- No max supply (acceptable for MVP)
-- Demonstrates:
-  - Emissions logic
-  - Reward mechanism
-  - Anti-double harvest
-
-## Smart Contract Structure
-
-### FarmGame.sol (Main Logic)
-
-```sol
-struct Plant {
-  uint8 plantType;
-  uint256 plantedAt;
-  bool harvested;
-}
-mapping(uint256 => Plant) public plants;
-```
-
-Responsibilities:
-
-- Mint plant NFT
-- Track growth
-- Mint reward tokens
-
-### PlantNFT.sol
-
-- ERC721
-- tokenURI() returns JSON metadata:
-
-```sol
-{
-  "name": "OG Kush",
-  "attributes": [
-    { "trait_type": "Grow Time", "value": "5 min" }
-  ]
-}
-```
-
-### WeedToken.sol
-
-- ERC20
-- mint(address to, uint amount)
-- Only callable by FarmGame
-
-### Frontend Pages (Only 2)
-
-```javscript
-/
-```
-
-**Farm Dashboard**
-
-- Connect Wallet
-- Show owned plants
-- Show WEED balance
-- Buttons:
-  - Plant OG Kush
-  - Plant Blue Dream
-  - Harvest (if ready)
-
-```javscript
-/admin (Optional)
-```
-
-- Show contract addresses
-- Network info
-
-## What Recruiters Will Actually Care About
-
-- Clear system architecture
-- Tokenomics explanation
-- Security considerations
-- Tradeoffs & future improvements
-
-That sentence alone scores points.
-
-### Optional Power Move (If Time Left)
-
-```sol
-event Harvested(address player, uint tokenId, uint reward);
-```
-
-Show it in frontend -> proves Web3 event handling.
-
-### Frontend Start ( Local Dev )
-
-Hardhat with node
-
-```bash
-npx hardhat node
-```
-
-Deploy on localhost network
-
-```bash
-npx hardhat run scripts/deploy.ts --network localhost
-```
-
-Run this command from project root:
-
-```bash
-DEBUG=* npm --prefix ./frontend run dev
-```
-
-Or use starter script commands:
-
-```bash
-chmod +x ./start.sh
-./start.sh
-```
-
-## Starter scripts
-
-```bash
-  chmod +x ./hardhat_deploy.sh
-  ./hardhat_compile.sh
-```
-
-Script to manage the build process for smart contracts in a project:
-
-1. Sets up directories for artifacts and cache based on the current project directory.
-2. Deletes any existing artifacts and cache directories to ensure a fresh build environment.
-3. Compiles the smart contracts using Hardhat.
-4. Copies the generated ABI (Application Binary Interface) files to the frontend directory for integration.
-
-Dependencies:
-This script requires 'npx' and 'hardhat' to be installed and available in the PATH.
-
-Exit Codes:
-0 - Success
-1 - Compilation failure or ABI copy failure
-
-```bash
-  chmod +x ./hardhat_deploy.sh
-  ./hardhat_deploy.sh
-```
-
-Script to deploy smart contracts to a local Hardhat network:
-
-1. Sets project paths and ensures local environment configuration with a .env file.
-2. Cleans up existing Hardhat artifacts and cache directories.
-3. Deploys smart contracts to the localhost using Hardhat.
-4. Captures the output of the deployment, extracting contract addresses for WeedToken,
-   PlantNFT, and FarmGame.
-5. Updates the .env file to store the new contract addresses, ensuring old addresses are removed.
-
-Dependencies:
-Ensure 'npx' and 'hardhat' are installed and accessible from the command line.
-
-Exit Codes:
-0 - Success
-1 - Extraction failure of contract addresses
