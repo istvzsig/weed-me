@@ -17,10 +17,12 @@ contract FarmGame {
         PlantType plantType;
         uint256 plantedAt;
         bool harvested;
+        uint64 price;
     }
 
     // tokenId => Plant data
     mapping(uint256 => Plant) public plants;
+    mapping(address => uint256[]) private _playerPlants;
 
     event Planted(address indexed player, uint256 tokenId, PlantType plantType);
     event Harvested(address indexed player, uint256 tokenId, uint256 reward);
@@ -35,13 +37,20 @@ contract FarmGame {
     // -----------------------------
 
     function plant(PlantType plantType) external {
+        uint256 price = getPlantPrice(plantType);
+
+        weedToken.transferFrom(msg.sender, address(this), price);
+
         uint256 tokenId = plantNFT.mint(msg.sender);
 
         plants[tokenId] = Plant({
             plantType: plantType,
             plantedAt: block.timestamp,
-            harvested: false
+            harvested: false,
+            price: uint64(price)
         });
+
+        _playerPlants[msg.sender].push(tokenId);
 
         emit Planted(msg.sender, tokenId, plantType);
     }
@@ -71,15 +80,28 @@ contract FarmGame {
 
     function isReadyToHarvest(uint256 tokenId) public view returns (bool) {
         Plant memory plantData = plants[tokenId];
+
+        if (plantData.plantedAt == 0 || plantData.harvested) {
+            return false;
+        }
+
         uint256 growTime = getGrowTime(plantData.plantType);
         return block.timestamp >= plantData.plantedAt + growTime;
     }
 
+    function getPlantPrice(PlantType plantType) public pure returns (uint256) {
+    if (plantType == PlantType.OG_KUSH) {
+        return 5 ether;
+    } else {
+        return 8 ether;
+    }
+    }
+
     function getGrowTime(PlantType plantType) public pure returns (uint256) {
         if (plantType == PlantType.OG_KUSH) {
-            return 5 minutes;
+            return 1 minutes;
         } else {
-            return 10 minutes;
+            return 2 minutes;
         }
     }
 
@@ -89,5 +111,9 @@ contract FarmGame {
         } else {
             return 25 * 1e18;
         }
+    }
+
+    function getPlayerPlants(address player) external view returns (uint256[] memory) {
+        return _playerPlants[player];
     }
 }
