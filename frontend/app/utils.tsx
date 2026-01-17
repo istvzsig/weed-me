@@ -5,7 +5,7 @@ export function log(scope: string, message: string, data?: unknown) {
     `%c[${scope}]`,
     "color:#22c55e;font-weight:bold",
     message,
-    data ?? ""
+    data ?? "",
   );
 }
 
@@ -18,14 +18,17 @@ export function formatAccount(addr: string) {
 -------------------------------------------------- */
 export function initWeb3Contract(
   web3: Web3,
-  artifact: { abi: ContractAbi },
-  address: string
+  artifact: {
+    contractName: any;
+    abi: ContractAbi;
+  },
+  address: string,
 ) {
   if (!address) {
     throw new Error("Contract address not specified");
   }
 
   const contract = new web3.eth.Contract(artifact.abi, address);
-  log("CONTRACT", `Loaded at ${address}`);
+  log("CONTRACT", `${artifact.contractName} loaded: ${address}`);
   return contract;
 }
