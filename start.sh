@@ -11,6 +11,8 @@ export ABI_DIR="$FRONTEND_DIR/abi"
 export ENV_FILE="$PROJECT_DIR/.env"
 export DEPLOY_LOG_FILE="$PROJECT_DIR/logs/deploy.log"
 
+export DEPLOY_OUTPUT=$(npx --prefix "$PROJECT_DIR" hardhat run scripts/deploy.ts --network localhost 2>&1)
+
 mkdir -p "$LOGS_DIR" "$ABI_DIR"
 
 LOG_FILE="$LOGS_DIR/main.log"
@@ -106,16 +108,19 @@ function main_menu() {
     echo "6) Exit"
 }
 
-main_menu
-while true; do
-    read -p "Select an option (1-6): " choice
-    case $choice in
-        1) run_full_automation_setup ;;
-        2) hardhat_run_node ;;
-        3) hardhat_compile ;;
-        4) hardhat_deploy ;;
-        5) run_frontend ;;
-        6) exit 0 ;;
-        *) log "[ERROR] Invalid option, please try again." ;;
-    esac
-done
+# main_menu
+# while true; do
+#     read -p "Select an option (1-6): " choice
+#     case $choice in
+#         1) run_full_automation_setup ;;
+#         2) hardhat_run_node ;;
+#         3) hardhat_compile ;;
+#         4) hardhat_deploy ;;
+#         5) run_frontend ;;
+#         6) exit 0 ;;
+#         *) log "[ERROR] Invalid option, please try again." ;;
+#     esac
+# done
+
+
+run_full_automation_setup

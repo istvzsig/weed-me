@@ -2,16 +2,19 @@
 
 # Log function to write messages with timestamps
 function log() {
-    echo "$(date +'%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    echo "$(date +'%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOGS_DIR/dotenv.log"
 }
 
-# Remove old contract addresses from the environment file
-sed -i.bak \
-    -e '/^WEED_TOKEN_ADDRESS=/d' \
-    -e '/^PLANT_NFT_ADDRESS=/d' \
-    -e '/^FARM_GAME_ADDRESS=/d' \
-    "$ENV_FILE"
-rm -f "$ENV_FILE.bak"
+if [[ ! -f $ENV_FILE ]]; then
+    touch $ENV_FILE
+fi
+
+# # Remove old contract addresses from the environment file
+# sed -i.bak \
+#     -e '/^WEED_TOKEN_ADDRESS=/d' \
+#     -e '/^PLANT_NFT_ADDRESS=/d' \
+#     -e '/^FARM_GAME_ADDRESS=/d' \
+#     "$ENV_FILE"
 
 # Extract addresses by name (safe & deterministic)
 WEED_TOKEN_ADDRESS=$(grep 'WeedToken deployed at:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')

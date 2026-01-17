@@ -16,7 +16,7 @@ async function main() {
     WeedTokenJson.bytecode,
     signer
   );
-  const weedToken = await WeedTokenFactory.deploy();
+  const weedToken = await WeedTokenFactory.deploy(await signer.getAddress());
   await weedToken.waitForDeployment();
   console.log("WeedToken deployed at:", weedToken.target);
 
