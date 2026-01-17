@@ -4,7 +4,7 @@ import dotenv from "dotenv"
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: import('next').NextConfig = {
   turbopack: { root: __dirname },
   env: {
     WEED_TOKEN_ADDRESS: process.env.WEED_TOKEN_ADDRESS,
