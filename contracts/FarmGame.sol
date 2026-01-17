@@ -20,12 +20,16 @@ contract FarmGame {
         uint64 price;
     }
 
-    // tokenId => Plant data
+    uint256 public constant FAUCET_AMOUNT = 20 ether;
+    uint256 public constant FAUCET_COOLDOWN = 5 minutes;
+
     mapping(uint256 => Plant) public plants;
     mapping(address => uint256[]) private _playerPlants;
+    mapping(address => uint256) public lastFaucetClaim;
 
     event Planted(address indexed player, uint256 tokenId, PlantType plantType);
     event Harvested(address indexed player, uint256 tokenId, uint256 reward);
+    event FaucetClaimed(address indexed player, uint256 amount);
 
     constructor(address _weedToken, address _plantNFT) {
         weedToken = WeedToken(_weedToken);
@@ -35,6 +39,19 @@ contract FarmGame {
     // -----------------------------
     // Gameplay
     // -----------------------------
+
+    function faucet() external {
+        require(block.chainid != 1, "Faucet disabled on mainnet");
+        require(
+            block.timestamp >= lastFaucetClaim[msg.sender] + FAUCET_COOLDOWN,
+            "Faucet cooldown active"
+        );
+
+        lastFaucetClaim[msg.sender] = block.timestamp;
+        weedToken.mint(msg.sender, FAUCET_AMOUNT);
+
+        emit FaucetClaimed(msg.sender, FAUCET_AMOUNT);
+    }
 
     function plant(PlantType plantType) external {
         uint256 price = getPlantPrice(plantType);
@@ -70,8 +87,21 @@ contract FarmGame {
         emit Harvested(msg.sender, tokenId, reward);
     }
 
-    function buyWeed() external {
-        weedToken.mint(msg.sender, 100 ether);
+    function buyWeed() external payable {
+        uint256 pricePerToken = 0.001 ether;
+        require(msg.value >= pricePerToken, "Send enough ETH");
+
+        uint256 amountToMint = (msg.value * 1 ether) / pricePerToken;
+        uint256 cost = (amountToMint * pricePerToken) / 1 ether;
+
+        // Refund excess ETH
+        uint256 refund = msg.value - cost;
+        if (refund > 0) {
+            (bool success, ) = msg.sender.call{value: refund}("");
+            require(success, "ETH refund failed");
+        }
+
+        weedToken.mint(msg.sender, amountToMint);
     }
 
     // -----------------------------
@@ -90,11 +120,11 @@ contract FarmGame {
     }
 
     function getPlantPrice(PlantType plantType) public pure returns (uint256) {
-    if (plantType == PlantType.OG_KUSH) {
-        return 5 ether;
-    } else {
-        return 8 ether;
-    }
+        if (plantType == PlantType.OG_KUSH) {
+            return 5 ether;
+        } else {
+            return 8 ether;
+        }
     }
 
     function getGrowTime(PlantType plantType) public pure returns (uint256) {
@@ -113,7 +143,9 @@ contract FarmGame {
         }
     }
 
-    function getPlayerPlants(address player) external view returns (uint256[] memory) {
+    function getPlayerPlants(
+        address player
+    ) external view returns (uint256[] memory) {
         return _playerPlants[player];
     }
 }
