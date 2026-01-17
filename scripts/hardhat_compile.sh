@@ -1,11 +1,6 @@
 #!/bin/bash
 set -e
 
-# Set the project directory
-PROJECT_DIR=$(pwd)
-ARTIFACTS_DIR="$PROJECT_DIR/artifacts"
-CACHE_DIR="$PROJECT_DIR/cache"
-
 # Create a timestamped log file
 TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
 LOG_FILE="$PROJECT_DIR/logs/compile_$TIMESTAMP.log"

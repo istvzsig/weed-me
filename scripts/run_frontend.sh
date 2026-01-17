@@ -1,8 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-DIR=$1
-LOG_FILE="$DIR/../logs/frontend_$(date +'%Y%m%d_%H%M%S').log"
+LOG_FILE="$LOGS_DIR/frontend_$(date +'%Y%m%d_%H%M%S').log"
 PORT=3000
 
 # Create necessary directories
@@ -21,7 +20,7 @@ fi
 echo "[FRONTEND] Starting frontend... Logs will be displayed in the terminal."
 
 # Start the frontend and log output to both terminal and log file
-npm --prefix "$DIR" run dev 2>&1 | tee "$LOG_FILE" &
+npm --prefix "$FRONTEND_DIR" run dev 2>&1 | tee "$LOG_FILE" &
 
 FRONTEND_PID=$!
 echo "[FRONTEND] Frontend started with PID $FRONTEND_PID"
