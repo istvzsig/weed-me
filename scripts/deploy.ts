@@ -8,43 +8,52 @@ import FarmGameJson from "../artifacts/contracts/FarmGame.sol/FarmGame.json";
 async function main() {
   const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
   const signer = await provider.getSigner(0);
-  const address = await signer.getAddress();
 
-  // Deploy WeedToken
   const WeedTokenFactory = new ethers.ContractFactory(
     WeedTokenJson.abi,
     WeedTokenJson.bytecode,
-    signer
+    signer,
   );
   const weedToken = await WeedTokenFactory.deploy();
   await weedToken.waitForDeployment();
-  console.log("WeedToken deployed at:", weedToken.target);
 
-  // Deploy PlantNFT
   const PlantNFTFactory = new ethers.ContractFactory(
     PlantNFTJson.abi,
     PlantNFTJson.bytecode,
-    signer
+    signer,
   );
   const plantNFT = await PlantNFTFactory.deploy(await signer.getAddress());
   await plantNFT.waitForDeployment();
-  console.log("PlantNFT deployed at:", plantNFT.target);
 
-  // Deploy FarmGame
   const FarmGameFactory = new ethers.ContractFactory(
     FarmGameJson.abi,
     FarmGameJson.bytecode,
-    signer
+    signer,
   );
   const farmGame = await FarmGameFactory.deploy(
     weedToken.target,
-    plantNFT.target
+    plantNFT.target,
+    true, // local/test otherwise turn off faucet
   );
   await farmGame.waitForDeployment();
-  console.log("FarmGame deployed at:", farmGame.target);
 
-  await weedToken.transferOwnership(farmGame.target);
-  console.log("WeedToken ownership transferred to FarmGame");
+  const weedTokenContract = new ethers.Contract(
+    weedToken.target,
+    WeedTokenJson.abi,
+    signer,
+  );
+  const plantNFTContract = new ethers.Contract(
+    plantNFT.target,
+    PlantNFTJson.abi,
+    signer,
+  );
+
+  await (await weedTokenContract.transferOwnership(farmGame.target)).wait();
+  await (await plantNFTContract.transferOwnership(farmGame.target)).wait();
+
+  console.log("WeedToken:", weedToken.target);
+  console.log("PlantNFT:", plantNFT.target);
+  console.log("FarmGame:", farmGame.target);
 }
 
 main().catch((err) => {

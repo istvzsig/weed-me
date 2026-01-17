@@ -11,8 +11,6 @@ export ABI_DIR="$FRONTEND_DIR/abi"
 export ENV_FILE="$PROJECT_DIR/.env"
 export DEPLOY_LOG_FILE="$PROJECT_DIR/logs/deploy.log"
 
-export DEPLOY_OUTPUT=$(npx --prefix "$PROJECT_DIR" hardhat run scripts/deploy.ts --network localhost 2>&1)
-
 mkdir -p "$LOGS_DIR" "$ABI_DIR"
 
 LOG_FILE="$LOGS_DIR/main.log"
@@ -90,9 +88,10 @@ function run_full_automation_setup() {
     log "[SYSTEM] Starting full automation..."
     hardhat_run_node
     hardhat_compile
-    hardhat_deploy
-    init_dotenv
-    copy_abi_files
+    hardhat_deploy &
+    wait
+    copy_abi_files 
+    init_dotenv 
     run_frontend
 }
 

@@ -17,9 +17,9 @@ sed -i.bak \
     "$ENV_FILE"
 
 # Extract addresses by name (safe & deterministic)
-WEED_TOKEN_ADDRESS=$(grep 'WeedToken deployed at:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
-PLANT_NFT_ADDRESS=$(grep 'PlantNFT deployed at:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
-FARM_GAME_ADDRESS=$(grep 'FarmGame deployed at:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
+WEED_TOKEN_ADDRESS=$(grep 'WeedToken:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
+PLANT_NFT_ADDRESS=$(grep 'PlantNFT:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
+FARM_GAME_ADDRESS=$(grep 'FarmGame:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
 
 # Validate extraction
 if [[ -z "$WEED_TOKEN_ADDRESS" || -z "$PLANT_NFT_ADDRESS" || -z "$FARM_GAME_ADDRESS" ]]; then

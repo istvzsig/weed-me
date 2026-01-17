@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./WeedToken.sol";
 import "./PlantNFT.sol";
 
-contract FarmGame {
+contract FarmGame is Ownable {
     WeedToken public weedToken;
     PlantNFT public plantNFT;
 
@@ -20,8 +21,10 @@ contract FarmGame {
         uint64 price;
     }
 
-    uint256 public constant FAUCET_AMOUNT = 20 ether;
-    uint256 public constant FAUCET_COOLDOWN = 5 minutes;
+    uint256 public faucetAmount = 20 ether;
+    uint256 public faucetCooldown = 5 minutes;
+    uint256 public dailyCap;
+    bool public faucetEnabled = false;
 
     mapping(uint256 => Plant) public plants;
     mapping(address => uint256[]) private _playerPlants;
@@ -31,9 +34,35 @@ contract FarmGame {
     event Harvested(address indexed player, uint256 tokenId, uint256 reward);
     event FaucetClaimed(address indexed player, uint256 amount);
 
-    constructor(address _weedToken, address _plantNFT) {
+    constructor(
+        address _weedToken,
+        address _plantNFT,
+        bool _faucetEnabled
+    ) Ownable(msg.sender) {
         weedToken = WeedToken(_weedToken);
         plantNFT = PlantNFT(_plantNFT);
+        faucetEnabled = _faucetEnabled;
+    }
+
+    // -----------------------------
+    // Admin
+    // -----------------------------
+
+    function setFaucetEnabled(bool enabled) external onlyOwner {
+        faucetEnabled = enabled;
+    }
+
+    function setFaucetCooldown(uint256 cooldownInMinutes) external onlyOwner {
+        faucetCooldown = cooldownInMinutes * 1 minutes;
+    }
+
+    function setDailyCap(uint256 cap) external onlyOwner {
+        dailyCap = cap;
+    }
+
+    function withdraw() external onlyOwner {
+        (bool ok, ) = owner().call{value: address(this).balance}("");
+        require(ok, "Withdraw failed");
     }
 
     // -----------------------------
@@ -41,16 +70,16 @@ contract FarmGame {
     // -----------------------------
 
     function faucet() external {
-        require(block.chainid != 1, "Faucet disabled on mainnet");
+        require(faucetEnabled, "Faucet disabled");
         require(
-            block.timestamp >= lastFaucetClaim[msg.sender] + FAUCET_COOLDOWN,
+            block.timestamp >= lastFaucetClaim[msg.sender] + faucetCooldown,
             "Faucet cooldown active"
         );
 
         lastFaucetClaim[msg.sender] = block.timestamp;
-        weedToken.mint(msg.sender, FAUCET_AMOUNT);
+        weedToken.mint(msg.sender, faucetAmount);
 
-        emit FaucetClaimed(msg.sender, FAUCET_AMOUNT);
+        emit FaucetClaimed(msg.sender, faucetAmount);
     }
 
     function plant(PlantType plantType) external {
@@ -105,7 +134,7 @@ contract FarmGame {
     }
 
     // -----------------------------
-    // View Helpers
+    // Helpers
     // -----------------------------
 
     function isReadyToHarvest(uint256 tokenId) public view returns (bool) {
