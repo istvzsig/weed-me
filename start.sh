@@ -62,7 +62,7 @@ function copy_abi_files() {
     local log_file
     log_file=$(create_log_file "copy_abi")
     log "[HARDHAT] Copying ABI files... Logs -> $log_file"
-    bash "$SCRIPTS_DIR/hardhat_copy_abi_files.sh" 2>&1 | tee "$log_file"
+    bash "$SCRIPTS_DIR/copy_abi_files.sh" 2>&1 | tee "$log_file"
 }
 
 function run_frontend() {
@@ -80,18 +80,17 @@ function run_frontend() {
     log "[FRONTEND] Frontend is now running."
 }
 
-function init_dotenv() {
-    bash "$SCRIPTS_DIR/init_dotenv.sh"
+function dotenv_setup() {
+    bash "$SCRIPTS_DIR/dotenv_setup.sh"
 }
 
 function run_full_automation_setup() {
     log "[SYSTEM] Starting full automation..."
     hardhat_run_node
     hardhat_compile
-    hardhat_deploy &
-    wait
+    hardhat_deploy
     copy_abi_files 
-    init_dotenv 
+    dotenv_setup 
     run_frontend
 }
 
