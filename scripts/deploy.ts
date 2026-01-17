@@ -1,10 +1,10 @@
 // scripts/deploy.ts
 import { ethers } from "ethers";
 
-import WeedTokenJson from "../artifacts/contracts/WeedToken.sol/WeedToken.json";
-import SeedNFTJson from "../artifacts/contracts/SeedNFT.sol/SeedNFT.json";
-import PlantNFTJson from "../artifacts/contracts/PlantNFT.sol/PlantNFT.json";
-import FarmGameJson from "../artifacts/contracts/FarmGame.sol/FarmGame.json";
+import WeedTokenJson from "../artifacts/contracts/WeedToken.sol/WeedToken.json" with { type: "json" };
+import SeedNFTJson from "../artifacts/contracts/SeedNFT.sol/SeedNFT.json" with { type: "json" };
+import PlantNFTJson from "../artifacts/contracts/PlantNFT.sol/PlantNFT.json" with { type: "json" };
+import FarmGameJson from "../artifacts/contracts/FarmGame.sol/FarmGame.json" with { type: "json" };
 
 async function main() {
   const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545"); // Extract magic string to process

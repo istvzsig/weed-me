@@ -4,38 +4,37 @@ if [[ ! -f $ENV_FILE ]]; then
     touch $ENV_FILE
 fi
 
+rm -rf $ENV_FILE
+
 # Log function to write messages with timestamps
 function log() {
     echo "$(date +'%Y-%m-%d %H:%M:%S') - $1" | tee -a "$ENV_FILE"
 }
-
-# Remove old contract addresses from the environment file
-sed -i.bak \
-    -e '/^WEED_TOKEN_ADDRESS=/d' \
-    -e '/^SEED_NFT_ADDRESS=/d' \
-    -e '/^PLANT_NFT_ADDRESS=/d' \
-    -e '/^FARM_GAME_ADDRESS=/d' \
-    "$ENV_FILE"
-
-# Extract addresses by name (safe & deterministic)
-WEED_TOKEN_ADDRESS=$(grep 'WeedToken:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
-SEED_NFT_ADDRESS=$(grep 'SeedNFT:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
-PLANT_NFT_ADDRESS=$(grep 'PlantNFT:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
-FARM_GAME_ADDRESS=$(grep 'FarmGame:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}')
-
-# Validate extraction
-if [[ -z "$WEED_TOKEN_ADDRESS" || -z "$SEED_NFT_ADDRESS" || -z "$PLANT_NFT_ADDRESS"  || -z "$FARM_GAME_ADDRESS" ]]; then
-    log "[ERROR] Failed to extract one or more contract addresses"
+if [[ ! -f "$DEPLOY_LOG_FILE" ]]; then
+    echo "[ERROR] Deploy log file not found: $DEPLOY_LOG_FILE"
     exit 1
 fi
 
-# Ensure .env ends with a newline
-tail -c 1 "$ENV_FILE" | read -r _ || echo >> "$ENV_FILE"
+# Extract addresses by name (safe & deterministic)
+WEED_TOKEN_ADDRESS=$(grep 'WeedToken:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}' | tail -n 1)
+SEED_NFT_ADDRESS=$(grep 'SeedNFT:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}' | tail -n 1)
+PLANT_NFT_ADDRESS=$(grep 'PlantNFT:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}' | tail -n 1)
+FARM_GAME_ADDRESS=$(grep 'FarmGame:' "$DEPLOY_LOG_FILE" | grep -oE '0x[a-fA-F0-9]{40}' | tail -n 1)
 
-# Append new addresses
-{
-    echo "WEED_TOKEN_ADDRESS=$WEED_TOKEN_ADDRESS"
-    echo "SEED_NFT_ADDRESS=$SEED_NFT_ADDRESS"
-    echo "PLANT_NFT_ADDRESS=$PLANT_NFT_ADDRESS"
-    echo "FARM_GAME_ADDRESS=$FARM_GAME_ADDRESS"
-} >"$ENV_FILE"
+# Validate extraction
+if [[ -z "$WEED_TOKEN_ADDRESS" || -z "$SEED_NFT_ADDRESS" || -z "$PLANT_NFT_ADDRESS"  || -z "$FARM_GAME_ADDRESS" ]]; then
+    echo "[ERROR] Failed to extract one or more contract addresses"
+    exit 1
+fi
+
+# ---- Write fresh .env (single write) ----
+cat <<EOF > "$ENV_FILE"
+FRONTEND_PORT=$FRONTEND_PORT
+BACKEND_PORT=$BACKEND_PORT
+WEED_TOKEN_ADDRESS=$WEED_TOKEN_ADDRESS
+SEED_NFT_ADDRESS=$SEED_NFT_ADDRESS
+PLANT_NFT_ADDRESS=$PLANT_NFT_ADDRESS
+FARM_GAME_ADDRESS=$FARM_GAME_ADDRESS
+EOF
+
+echo "[OK] Fresh .env written"
