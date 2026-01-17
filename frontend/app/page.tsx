@@ -85,7 +85,6 @@ export default function Home() {
     if (symbol !== "WEED") {
       throw new Error("Wrong contract used for WeedToken");
     }
-
     const balance = await weed.methods.balanceOf(acc).call();
     setWeedBalance(balance);
     log("BALANCE", "WEED", balance);
@@ -161,11 +160,14 @@ export default function Home() {
      Faucet (DEV ONLY)
   -------------------------------------------------- */
   async function buyWeed() {
-    if (!contracts || !account) return;
+    if (!contracts || !account || !web3) return;
 
     setLoading(true);
     try {
-      await contracts.farm.methods.buyWeed().send({ from: account });
+      await contracts.farm.methods.buyWeed().send({
+        from: account,
+        value: web3.utils.toWei("0.001", "ether"),
+      });
       await loadWeedBalance(account, contracts.weed);
     } finally {
       setLoading(false);
