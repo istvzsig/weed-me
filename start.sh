@@ -35,7 +35,7 @@ function hardhat_run_node() {
     fi
 
     # Detached background with tee to log file
-    npx --prefix \"$PROJECT_DIR\" hardhat node 2>&1 | tee "$log_file"
+    npx --prefix "$PROJECT_DIR" hardhat node 2>&1 | tee "$log_file" &
     HHH_PID=$!
     log "[HARDHAT] Hardhat node started (detached) PID $HHH_PID"
 
@@ -69,7 +69,7 @@ function run_frontend() {
     local log_file
     log_file=$(create_log_file "frontend")
     log "[FRONTEND] Starting frontend... Logs -> $log_file"
-    setsid bash -lc "bash \"$SCRIPTS_DIR/run_frontend.sh\" \"$FRONTEND_DIR\" 2>&1 | tee \"$log_file\"" >/dev/null 2>&1 &
+    bash "$SCRIPTS_DIR/run_frontend.sh" 2>&1 | tee "$log_file" &
     FRONTEND_PID=$!
     log "[FRONTEND] Frontend started (detached) PID $FRONTEND_PID"
 
@@ -106,8 +106,8 @@ function main_menu() {
     echo "6) Exit"
 }
 
+main_menu
 while true; do
-    main_menu
     read -p "Select an option (1-6): " choice
     case $choice in
         1) run_full_automation_setup ;;
