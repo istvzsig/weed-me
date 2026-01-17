@@ -16,11 +16,11 @@ async function main() {
     WeedTokenJson.bytecode,
     signer
   );
-  const weedToken = await WeedTokenFactory.deploy(await signer.getAddress());
+  const weedToken = await WeedTokenFactory.deploy();
   await weedToken.waitForDeployment();
   console.log("WeedToken deployed at:", weedToken.target);
 
-  // Deplo§y PlantNFT
+  // Deploy PlantNFT
   const PlantNFTFactory = new ethers.ContractFactory(
     PlantNFTJson.abi,
     PlantNFTJson.bytecode,
