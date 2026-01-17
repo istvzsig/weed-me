@@ -2,11 +2,14 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "./WeedToken.sol";
 import "./PlantNFT.sol";
+import "./SeedNFT.sol";
 
 contract FarmGame is Ownable {
     WeedToken public weedToken;
+    SeedNFT public seedNFT;
     PlantNFT public plantNFT;
 
     enum PlantType {
@@ -21,27 +24,39 @@ contract FarmGame is Ownable {
         uint64 price;
     }
 
-    uint256 public faucetAmount = 20 ether;
-    uint256 public faucetCooldown = 5 minutes;
+    uint256 public constant BASIC_SEED_PRICE = 0.002 ether;
+    uint256 public FAUCET_COOLDOWN = 5 minutes;
+    uint256 public FAUCET_AMOUNT = 20 ether;
     uint256 public dailyCap;
     bool public faucetEnabled = false;
+    address public treasury;
 
     mapping(uint256 => Plant) public plants;
+    mapping(address => uint256) public seeds;
     mapping(address => uint256[]) private _playerPlants;
     mapping(address => uint256) public lastFaucetClaim;
 
     event Planted(address indexed player, uint256 tokenId, PlantType plantType);
     event Harvested(address indexed player, uint256 tokenId, uint256 reward);
     event FaucetClaimed(address indexed player, uint256 amount);
+    event SeedBought(
+        address indexed buyer,
+        uint256 indexed seedId,
+        uint256 price
+    );
 
     constructor(
         address _weedToken,
         address _plantNFT,
-        bool _faucetEnabled
+        address _seedNFT,
+        bool _faucetEnabled,
+        address _treasury
     ) Ownable(msg.sender) {
         weedToken = WeedToken(_weedToken);
         plantNFT = PlantNFT(_plantNFT);
+        seedNFT = SeedNFT(_seedNFT);
         faucetEnabled = _faucetEnabled;
+        treasury = _treasury;
     }
 
     // -----------------------------
@@ -52,8 +67,12 @@ contract FarmGame is Ownable {
         faucetEnabled = enabled;
     }
 
+    function setFaucetAmount(uint256 amount) external onlyOwner {
+        FAUCET_AMOUNT = amount * 1 ether;
+    }
+
     function setFaucetCooldown(uint256 cooldownInMinutes) external onlyOwner {
-        faucetCooldown = cooldownInMinutes * 1 minutes;
+        FAUCET_COOLDOWN = cooldownInMinutes * 1 minutes;
     }
 
     function setDailyCap(uint256 cap) external onlyOwner {
@@ -61,7 +80,7 @@ contract FarmGame is Ownable {
     }
 
     function withdraw() external onlyOwner {
-        (bool ok, ) = owner().call{value: address(this).balance}("");
+        (bool ok, ) = treasury.call{value: address(this).balance}("");
         require(ok, "Withdraw failed");
     }
 
@@ -72,20 +91,25 @@ contract FarmGame is Ownable {
     function faucet() external {
         require(faucetEnabled, "Faucet disabled");
         require(
-            block.timestamp >= lastFaucetClaim[msg.sender] + faucetCooldown,
+            block.timestamp >= lastFaucetClaim[msg.sender] + FAUCET_COOLDOWN,
             "Faucet cooldown active"
         );
 
         lastFaucetClaim[msg.sender] = block.timestamp;
-        weedToken.mint(msg.sender, faucetAmount);
-
-        emit FaucetClaimed(msg.sender, faucetAmount);
+        weedToken.mint(msg.sender, FAUCET_AMOUNT);
+        emit FaucetClaimed(msg.sender, FAUCET_AMOUNT);
     }
 
-    function plant(PlantType plantType) external {
-        uint256 price = getPlantPrice(plantType);
+    function plant(uint256 seedId, PlantType plantType) external {
+        // must own seed
+        require(seedNFT.ownerOf(seedId) == msg.sender, "Not seed owner");
 
-        weedToken.transferFrom(msg.sender, address(this), price);
+        // burn seed (FarmGame must be SeedNFT owner)
+        seedNFT.burn(seedId);
+
+        // OPTIONAL: also charge WEED as a sink (good for economy)
+        uint256 weedPrice = getPlantPrice(plantType);
+        weedToken.transferFrom(msg.sender, address(this), weedPrice);
 
         uint256 tokenId = plantNFT.mint(msg.sender);
 
@@ -93,11 +117,10 @@ contract FarmGame is Ownable {
             plantType: plantType,
             plantedAt: block.timestamp,
             harvested: false,
-            price: uint64(price)
+            price: uint64(weedPrice)
         });
 
         _playerPlants[msg.sender].push(tokenId);
-
         emit Planted(msg.sender, tokenId, plantType);
     }
 
@@ -114,6 +137,12 @@ contract FarmGame is Ownable {
         weedToken.mint(msg.sender, reward);
 
         emit Harvested(msg.sender, tokenId, reward);
+    }
+
+    function buySeeds(uint256 amount) external payable {
+        uint256 pricePerSeed = 0.002 ether;
+        require(msg.value == pricePerSeed * amount, "Wrong ETH");
+        seeds[msg.sender] += amount;
     }
 
     function buyWeed() external payable {
@@ -136,17 +165,6 @@ contract FarmGame is Ownable {
     // -----------------------------
     // Helpers
     // -----------------------------
-
-    function isReadyToHarvest(uint256 tokenId) public view returns (bool) {
-        Plant memory plantData = plants[tokenId];
-
-        if (plantData.plantedAt == 0 || plantData.harvested) {
-            return false;
-        }
-
-        uint256 growTime = getGrowTime(plantData.plantType);
-        return block.timestamp >= plantData.plantedAt + growTime;
-    }
 
     function getPlantPrice(PlantType plantType) public pure returns (uint256) {
         if (plantType == PlantType.OG_KUSH) {
@@ -176,5 +194,16 @@ contract FarmGame is Ownable {
         address player
     ) external view returns (uint256[] memory) {
         return _playerPlants[player];
+    }
+
+    function isReadyToHarvest(uint256 tokenId) public view returns (bool) {
+        Plant memory plantData = plants[tokenId];
+
+        if (plantData.plantedAt == 0 || plantData.harvested) {
+            return false;
+        }
+
+        uint256 growTime = getGrowTime(plantData.plantType);
+        return block.timestamp >= plantData.plantedAt + growTime;
     }
 }
