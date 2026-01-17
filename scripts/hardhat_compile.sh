@@ -1,37 +1,35 @@
 #!/bin/bash
 set -e
 
-# Create a timestamped log file
 TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
-LOG_FILE="$PROJECT_DIR/logs/compile_$TIMESTAMP.log"
-mkdir -p "$(dirname "$LOG_FILE")"
+export COMPILE_LOG_FILE="$PROJECT_DIR/logs/compile_$TIMESTAMP.log"
 
 # Log function
 log() {
-    echo "[LOG] $(date +'%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    echo "$(date +'%Y-%m-%d %H:%M:%S') - $1" | tee -a "$COMPILE_LOG_FILE"
 }
 
-log "Starting compilation script..."
+log "[HARDHAT] Starting hardhat compilation script..."
 
 # Delete artifacts and cache
 if [[ -d $ARTIFACTS_DIR ]]; then
-    log "Deleting existing artifacts directory."
+    log "[SYSTEM] Deleting existing artifacts directory."
     rm -rf "$ARTIFACTS_DIR"
 fi
 
 if [[ -d $CACHE_DIR ]]; then
-    log "Deleting existing cache directory."
+    log "[SYSTEM] Deleting existing cache directory."
     rm -rf "$CACHE_DIR"
 fi
 
 # Compile contracts
-log "Compiling smart contracts..."
-if npx hardhat compile 2>&1 | tee -a "$LOG_FILE"; then
-    log "Compilation successful."
+log "[HARDHAT] Compiling smart contracts..."
+if npx hardhat compile 2>&1 ; then
+    echo "[HARDHAT] Compilation successful."
 else
-    log "Error: Compilation failed."
+    log "[ERROR] Compilation failed."
     exit 1
 fi
 
-log "Compilation script finished. Log saved at $LOG_FILE"
+log "[SYSTEM] Compilation script finished. Log saved at $COMPILE_LOG_FILE"
 exit 0

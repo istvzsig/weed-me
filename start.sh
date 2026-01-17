@@ -2,82 +2,94 @@
 set -euo pipefail
 
 export PROJECT_DIR=$(pwd)
-export ENV_FILE="$PROJECT_DIR/.env"
 export SCRIPTS_DIR="./scripts"
 export LOGS_DIR="$PROJECT_DIR/logs"
+export FRONTEND_DIR="$PROJECT_DIR/frontend"
 export ARTIFACTS_DIR="$PROJECT_DIR/artifacts"
 export CACHE_DIR="$PROJECT_DIR/cache"
-export FRONTEND_DIR="$PROJECT_DIR/frontend"
-export ABI_DIR="$PROJECT_DIR/frontend/abi"
-export DEPLOY_OUTPUT=$(npx --prefix "$PROJECT_DIR" hardhat run scripts/deploy.ts --network localhost 2>&1)
+export ABI_DIR="$FRONTEND_DIR/abi"
+export ENV_FILE="$PROJECT_DIR/.env"
+export DEPLOY_LOG_FILE="$PROJECT_DIR/logs/deploy.log"
 
 mkdir -p "$LOGS_DIR" "$ABI_DIR"
 
-# Set a default log file (can be updated later)
-LOG_FILE="$LOGS_DIR/main.log"  # This can be customized as needed
+LOG_FILE="$LOGS_DIR/main.log"
 
-# Helper function to create a timestamped log file
 function create_log_file() {
     local prefix=$1
     echo "$LOGS_DIR/${prefix}_$(date +'%Y%m%d_%H%M%S').log"
 }
 
 function log() {
-    echo "[LOG] $(date +'%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
-}
-
-function update_dotenv_after_hardhat_deploy() {
-    bash $SCRIPTS_DIR/init_dotenv.sh
+    echo "$(date +'%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
 }
 
 function hardhat_run_node() {
     local log_file
     log_file=$(create_log_file "hardhat_node")
-    echo "[CONTRACT] Starting Hardhat node... Logs -> $log_file"
+    log "[HARDHAT] Starting Hardhat node... Logs -> $log_file"
 
     if lsof -i:8545 -t >/dev/null 2>&1; then
-        echo "[CONTRACT] Hardhat node already running on port 8545, skipping start."
+        log "[HARDHAT] Hardhat node already running on port 8545, skipping start."
         return 0
     fi
 
-    # start detached so it survives and logs to terminal + file
-    setsid bash -lc "npx --prefix \"$PROJECT_DIR\" hardhat node 2>&1 | tee \"$log_file\"" >/dev/null 2>&1 &
+    # Detached background with tee to log file
+    npx --prefix \"$PROJECT_DIR\" hardhat node 2>&1 | tee "$log_file"
     HHH_PID=$!
-    echo "[CONTRACT] Hardhat node started (detached) PID $HHH_PID"
+    log "[HARDHAT] Hardhat node started (detached) PID $HHH_PID"
 
-    echo "[CONTRACT] Waiting for Hardhat node to be ready..."
+    log "[HARDHAT] Waiting for Hardhat RPC..."
     until curl -s http://localhost:8545 >/dev/null; do sleep 1; done
-    echo "[CONTRACT] Hardhat node is ready."
+    log "[HARDHAT] Hardhat node is ready."
 }
 
 function hardhat_compile() {
     local log_file
     log_file=$(create_log_file "hardhat_compile")
-    echo "[CONTRACT] Compiling smart contracts... Logs -> $log_file"
+    log "[HARDHAT] Compiling smart contracts... Logs -> $log_file"
     bash "$SCRIPTS_DIR/hardhat_compile.sh" 2>&1 | tee "$log_file"
 }
 
 function hardhat_deploy() {
     local log_file
     log_file=$(create_log_file "hardhat_deploy")
-    echo "[CONTRACT] Deploying smart contracts... Logs -> $log_file"
+    log "[HARDHAT] Deploying smart contracts... Logs -> $log_file"
     bash "$SCRIPTS_DIR/hardhat_deploy.sh" 2>&1 | tee "$log_file"
 }
 
 function copy_abi_files() {
-    bash $SCRIPTS_DIR/copy_abi_files.sh
+    local log_file
+    log_file=$(create_log_file "copy_abi")
+    log "[HARDHAT] Copying ABI files... Logs -> $log_file"
+    bash "$SCRIPTS_DIR/hardhat_copy_abi_files.sh" 2>&1 | tee "$log_file"
 }
 
 function run_frontend() {
-    bash $SCRIPTS_DIR/run_frontend.sh
+    local log_file
+    log_file=$(create_log_file "frontend")
+    log "[FRONTEND] Starting frontend... Logs -> $log_file"
+    setsid bash -lc "bash \"$SCRIPTS_DIR/run_frontend.sh\" \"$FRONTEND_DIR\" 2>&1 | tee \"$log_file\"" >/dev/null 2>&1 &
+    FRONTEND_PID=$!
+    log "[FRONTEND] Frontend started (detached) PID $FRONTEND_PID"
+
+    # wait for port
+    local PORT=3000
+    log "[FRONTEND] Waiting for frontend on port $PORT..."
+    until lsof -i:$PORT -t >/dev/null; do sleep 1; done
+    log "[FRONTEND] Frontend is now running."
+}
+
+function init_dotenv() {
+    bash "$SCRIPTS_DIR/init_dotenv.sh"
 }
 
 function run_full_automation_setup() {
-    echo "[FULL SETUP] Starting full automation..."
+    log "[SYSTEM] Starting full automation..."
     hardhat_run_node
     hardhat_compile
     hardhat_deploy
-    update_dotenv_after_hardhat_deploy
+    init_dotenv
     copy_abi_files
     run_frontend
 }
@@ -86,40 +98,24 @@ function main_menu() {
     echo "========================================"
     echo "Main Menu:"
     echo "========================================"
-    echo "1) Hardhat compile"
-    echo "2) Hardhat deploy"
-    echo "3) Start / Restart frontend"
-    echo "4) Run full automation setup"
-    echo "5) Exit"
+    echo "1) Run full automation setup"
+    echo "2) Hardhat node"
+    echo "3) Hardhat compile"
+    echo "4) Hardhat deploy"
+    echo "5) Start / Restart frontend server"
+    echo "6) Exit"
 }
 
-# =========================
-# MAIN LOOP
-# =========================
 while true; do
     main_menu
-    read -p "Select an option (1-5): " choice
+    read -p "Select an option (1-6): " choice
     case $choice in
-        1)
-            hardhat_run_node
-            hardhat_compile
-            ;;
-        2)
-            hardhat_run_node
-            hardhat_deploy
-            ;;
-        3)
-            run_frontend
-            ;;
-        4)
-            run_full_automation_setup
-            ;;
-        5)
-            echo "Exiting..."
-            exit 0
-            ;;
-        *)
-            echo "[ERROR] Invalid option, please try again."
-            ;;
+        1) run_full_automation_setup ;;
+        2) hardhat_run_node ;;
+        3) hardhat_compile ;;
+        4) hardhat_deploy ;;
+        5) run_frontend ;;
+        6) exit 0 ;;
+        *) log "[ERROR] Invalid option, please try again." ;;
     esac
 done
