@@ -10,4 +10,4 @@ cache/
 logs/
 **log**
 *.log
-*sh
+_scripts/
